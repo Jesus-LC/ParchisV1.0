@@ -1,0 +1,14 @@
+UI_Parchis\frmMenu.class
+negocio\entidades\Jugador.class
+negocio\entidades\Dado.class
+negocio\entidades\Casilla.class
+negocio\fachada\ReglasParchis.class
+UI_Parchis\Coordenadas.class
+UI_Parchis\frmTablero.class
+modelo\ParchisObservador.class
+negocio\entidades\Tablero.class
+com\mycompany\parchis\Parchis.class
+controlador\ControladorTurno.class
+negocio\fachada\ReglasParchisMock.class
+negocio\entidades\Ficha.class
+modelo\ParchisModelo.class
