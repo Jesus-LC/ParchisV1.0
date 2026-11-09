@@ -1,0 +1,7 @@
+target/
+*.class
+nbactions*.xml
+.idea/
+# Nunca subir credenciales (MySQL en el Hito 2B)
+*.local.properties
+credenciales*
