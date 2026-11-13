@@ -6,21 +6,24 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
  * Nodo P2P: es servidor (acepta pares) y cliente (se conecta a pares) a la vez.
- * Prototipo del estilo del Hito 2A.
+ * Lo usa el prototipo del Hito 2A y, en el 2B, el subsistema Sala.
  */
 public class NodoP2P implements AutoCloseable {
 
     public static final String SALUDO = "SALUDO";
     public static final String TEXTO = "TEXTO";
+    private static final int TIEMPO_CONEXION_MS = 3000;
 
     private final String nombre;
     private final int puerto;
     private final List<ConexionPar> conexiones = new CopyOnWriteArrayList<>();
-    private volatile Consumer<Mensaje> alRecibir = m -> { };
+    private volatile BiConsumer<Mensaje, ConexionPar> manejador = (m, c) -> { };
+    private volatile boolean saludoAutomatico = true;
     private ServerSocket servidor;
 
     public NodoP2P(String nombre, int puerto) {
@@ -32,8 +35,19 @@ public class NodoP2P implements AutoCloseable {
         return nombre;
     }
 
-    public void alRecibir(Consumer<Mensaje> manejador) {
-        this.alRecibir = manejador;
+    /** Si es true (por defecto), al conectarse cada lado se presenta con un SALUDO. */
+    public void setSaludoAutomatico(boolean saludoAutomatico) {
+        this.saludoAutomatico = saludoAutomatico;
+    }
+
+    /** Manejador simple: solo recibe el mensaje. */
+    public void alRecibir(Consumer<Mensaje> destino) {
+        this.manejador = (m, c) -> destino.accept(m);
+    }
+
+    /** Manejador que también recibe la conexión de origen, para poder responderle. */
+    public void alRecibirDe(BiConsumer<Mensaje, ConexionPar> destino) {
+        this.manejador = destino;
     }
 
     /** Abre el puerto y empieza a aceptar pares. */
@@ -52,20 +66,22 @@ public class NodoP2P implements AutoCloseable {
         aceptador.start();
     }
 
-    /** Se conecta a otro par. */
-    public void conectar(String host, int puertoRemoto) throws IOException {
+    /** Se conecta a otro par y devuelve la conexión. */
+    public ConexionPar conectar(String host, int puertoRemoto) throws IOException {
         Socket s = new Socket();
-        s.connect(new InetSocketAddress(host, puertoRemoto), 3000);
-        registrar(s);
+        s.connect(new InetSocketAddress(host, puertoRemoto), TIEMPO_CONEXION_MS);
+        return registrar(s);
     }
 
-    private void registrar(Socket s) throws IOException {
+    private ConexionPar registrar(Socket s) throws IOException {
         ConexionPar c = new ConexionPar(s, this);
         conexiones.add(c);
         c.start();
-        // Al conectarse, cada lado se presenta con su estilo.
-        c.enviar(new Mensaje(SALUDO, nombre,
-                "Hola, soy " + nombre + ". Mi estilo es P2P: cada nodo es cliente y servidor a la vez."));
+        if (saludoAutomatico) {
+            c.enviar(new Mensaje(SALUDO, nombre,
+                    "Hola, soy " + nombre + ". Mi estilo es P2P: cada nodo es cliente y servidor a la vez."));
+        }
+        return c;
     }
 
     public void enviarATodos(Mensaje m) {
@@ -78,8 +94,8 @@ public class NodoP2P implements AutoCloseable {
         return conexiones.size();
     }
 
-    void recibido(Mensaje m) {
-        alRecibir.accept(m);
+    void recibido(Mensaje m, ConexionPar origen) {
+        manejador.accept(m, origen);
     }
 
     void cerrada(ConexionPar c) {
