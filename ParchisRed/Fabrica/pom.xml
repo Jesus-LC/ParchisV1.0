@@ -16,6 +16,16 @@
         </dependency>
         <dependency>
             <groupId>com.mycompany</groupId>
+            <artifactId>Sala</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mycompany</groupId>
+            <artifactId>Persistencia</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mycompany</groupId>
             <artifactId>SalaMock</artifactId>
             <version>${project.version}</version>
         </dependency>
