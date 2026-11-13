@@ -1,43 +1,51 @@
-# Parchís en red (P2P) — Hito 2A
+# Parchís en red (P2P) — Hito 2B
 
-CU-01 en P2P sobre mocks + prototipo del estilo (dos computadoras se mandan un mensaje).
+CU-01 en P2P con el subsistema Sala real, MySQL para el perfil y comunicación entre computadoras.
 
-## Módulos (uno por componente de la vista de componentes, mismo nombre)
+## Módulos (uno por componente, mismo nombre que en StarUML)
 | Módulo | Contenido | Depende de |
 |---|---|---|
-| DTOs | JugadorDTO, SalaDTO | — |
-| Interfaces | IFachadaSala, IObservadorSala, SalaException | DTOs |
-| SalaMock | FachadaSalaMock, RedSimulada (en memoria; falla en A2 y A3) | DTOs, Interfaces |
-| Fabrica | FabricaFachadaSala (**único** que conoce al mock) | Interfaces, SalaMock |
+| DTOs | JugadorDTO, SalaDTO, PerfilDTO | — |
+| Interfaces | IFachadaSala (sin cambios desde 2A), IObservadorSala, IPerfilDAO, SalaException, PersistenciaException | DTOs |
+| Red | NodoP2P, ConexionPar, Mensaje, PrototipoP2P, DemoLocal | — |
+| SalaMock | FachadaSalaMock, RedSimulada (Hito 2A, sirve para pruebas) | DTOs, Interfaces |
+| Sala | **FachadaSala**, PerfilBO, ProtocoloSala | DTOs, Interfaces, Red |
+| Persistencia | **PerfilDAOMySQL** (todo el SQL), PerfilDAOMemoria (solo pruebas), ConfiguracionBD | DTOs, Interfaces |
+| Fabrica | FabricaFachadaSala: **único** que conoce clases concretas | Interfaces, Sala, Persistencia, SalaMock |
 | Presentacion | FrmMenuSala, FrmSala, ControlSala, Main | DTOs, Interfaces, Fabrica |
-| Red | NodoP2P, ConexionPar, Mensaje, PrototipoP2P (prototipo del estilo) | — |
 
-Regla: ninguna vista ni el controlador nombran al mock; solo la fábrica.
-En el Hito 2B se cambia **una línea** en `FabricaFachadaSala` para usar la fachada real.
+La interfaz `IFachadaSala` no cambió. Lo único que se agregó a `Interfaces` fue el código `PERFIL_NO_DISPONIBLE` en `SalaException.Codigo`.
 
-## Compilar y correr el CU-01 (mock)
+## 1. Base de datos (en cada computadora)
+1. Instala MySQL y ejecuta una vez: `mysql -u root -p < sql/schema.sql`
+2. Copia `db.example.properties` como `db.local.properties` y pon tu usuario y contraseña.
+   **Ese archivo está en .gitignore. Nunca lo subas a GitHub.**
+   Se busca en: `-Dparchis.db.config=ruta`, la carpeta desde donde ejecutas, `~/.parchis/`, o las variables `PARCHIS_DB_URL`, `PARCHIS_DB_USER`, `PARCHIS_DB_PASSWORD`.
+
+## 2. Compilar y correr
 ```
 mvn clean install
 mvn -pl Presentacion exec:java      # o en NetBeans: ejecutar parchis.presentacion.Main
 ```
-Para simular varios pares en una misma PC, usa la ventana inicial varias veces (el puerto local sube de 1 en 1).
+Para dos computadoras: misma red, misma versión, puerto abierto en el firewall. El anfitrión comparte la dirección que muestra su sala (IP:puerto). Si tiene VPN o varias tarjetas de red y muestra una IP equivocada, ejecuta con `-Dparchis.host=SU_IP`.
 
-## Prototipo P2P entre dos computadoras (módulo Red)
+## 3. Modos de prueba (sin tocar código)
+- `-Dparchis.dao=memoria` — perfiles en memoria, sin MySQL.
+- `-Dparchis.fachada=mock` — usa FachadaSalaMock (la del 2A).
+
+## 4. Pruebas automáticas (carpeta pruebas/, no es módulo)
+Después de `mvn clean install`, en la raíz (Linux/Mac):
 ```
-# Computadora A
-java -cp Red/target/classes parchis.red.PrototipoP2P Ana 5000
-# Computadora B (IP_DE_A = la IP de la computadora A en la red local)
-java -cp Red/target/classes parchis.red.PrototipoP2P Luis 5001 IP_DE_A 5000
+CP=$(ls -d */target/classes | tr '\n' ':')
+mkdir -p pruebas/out && javac -cp "$CP" -d pruebas/out pruebas/*.java
+java -Dparchis.dao=memoria -cp "$CP:pruebas/out" Casos 7100      # casos del CU-01 (A2, A3, datos inválidos)
+java -Dparchis.dao=memoria -cp "$CP:pruebas/out" Carrera         # 5 jugadores a la vez contra sala de 4
+java -Dparchis.dao=memoria -Dparchis.fachada=mock -cp "$CP:pruebas/out" Casos 7200   # lo mismo con el mock
 ```
-Al conectarse cada nodo manda su saludo con su estilo; después, lo que escribas + Enter llega a todos los pares. `salir` termina.
-Prueba rápida en una sola máquina: `java -cp Red/target/classes parchis.red.DemoLocal`.
-(Abre los puertos en el firewall si las máquinas no se ven.)
+En Windows reemplaza `$CP` por la lista de carpetas `*/target/classes` separadas por `;`.
 
-## Supuestos a revisar contra su especificación del CU-01
-- A2 = sala llena (máx. 4); A3 = anfitrión no disponible; además hay validación de datos (nombre vacío, puerto fuera de 1024–65535, puerto en uso).
-- `unirseASala` recibe también el puerto local porque en P2P cada par escucha en el suyo.
-- `IObservadorSala` existe porque el paso 3 (cada par actualiza su copia) debe reflejarse en la pantalla.
-
-## Recordatorios del manual
-- Cada integrante hace sus propios commits; no subir contraseñas de MySQL (el `.gitignore` ya excluye `*.local.properties` y `credenciales*`).
-- Si cambian la interfaz de la fachada, avisen al equipo y actualicen el modelo de StarUML.
+## Reglas del manual que cumple este proyecto
+- Vistas y controlador solo usan interfaces; las clases concretas solo las conoce `Fabrica`.
+- Todo el SQL está en `PerfilDAOMySQL`; `PerfilBO` solo ve `IPerfilDAO`.
+- No hay funciones extra (chat, partidas guardadas, ranking).
+- Cada integrante debe hacer sus propios commits; no subas contraseñas.
