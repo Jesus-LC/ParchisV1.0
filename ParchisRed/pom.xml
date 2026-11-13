@@ -10,9 +10,11 @@
     <modules>
         <module>DTOs</module>
         <module>Interfaces</module>
-        <module>SalaMock</module>
-        <module>Fabrica</module>
         <module>Red</module>
+        <module>SalaMock</module>
+        <module>Sala</module>
+        <module>Persistencia</module>
+        <module>Fabrica</module>
         <module>Presentacion</module>
     </modules>
 
