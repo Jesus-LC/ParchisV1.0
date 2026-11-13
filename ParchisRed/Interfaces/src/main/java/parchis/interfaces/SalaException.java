@@ -9,7 +9,9 @@ public class SalaException extends Exception {
         /** Alterno A2: la sala ya tiene el máximo de jugadores. */
         SALA_LLENA,
         /** Alterno A3: no hay un anfitrión escuchando en esa dirección. */
-        ANFITRION_NO_DISPONIBLE
+        ANFITRION_NO_DISPONIBLE,
+        /** No se pudo leer o guardar el perfil del jugador (base de datos). */
+        PERFIL_NO_DISPONIBLE
     }
 
     private final Codigo codigo;
